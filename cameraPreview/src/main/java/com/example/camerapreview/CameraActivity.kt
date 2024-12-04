@@ -17,17 +17,18 @@ import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import com.example.camerapreview.databinding.ActivityCameraPreviewBinding
 import java.io.File
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraPreviewBinding
-    private lateinit var cameraExecutor: ExecutorService
     private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var cameraControl: CameraControl
     private lateinit var cameraInfo: CameraInfo
 
+    // UseCase
+    private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
+
+    // Camera State
     private var isFlashOn = false
     private var isFrontCamera = false
 
@@ -36,15 +37,8 @@ class CameraActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_camera_preview)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        cameraExecutor = Executors.newSingleThreadExecutor()
-
         startCamera()
         setListeners()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
     }
 
     private fun startCamera() {
@@ -61,17 +55,16 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun bindCameraUseCases() {
-        val preview = Preview.Builder().build().apply {
+        preview = Preview.Builder().build().apply {
             surfaceProvider = binding.cameraPreview.surfaceProvider
         }
+        imageCapture = ImageCapture.Builder()
+            .setTargetRotation(binding.cameraPreview.display.rotation)
+            .build()
 
-        imageCapture = ImageCapture.Builder().setTargetRotation(binding.cameraPreview.display.rotation).build()
-
-        val cameraSelector = if (isFrontCamera) {
-            CameraSelector.DEFAULT_FRONT_CAMERA
-        } else {
-            CameraSelector.DEFAULT_BACK_CAMERA
-        }
+        val cameraSelector =
+            if (isFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA
+            else CameraSelector.DEFAULT_BACK_CAMERA
 
         cameraProvider.unbindAll()
 
